@@ -63,4 +63,3 @@ class myDetectionDataset(Dataset):
         ret_dict['translate_label'] = translate.astype(np.float32)
 
         return ret_dict
-

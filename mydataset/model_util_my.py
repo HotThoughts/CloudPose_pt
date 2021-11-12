@@ -1,19 +1,16 @@
 # Copyright (c) Facebook, Inc. and its affiliates.
-# 
+#
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-import numpy as np
-import open3d as o3d
-import sys
 import os
-
+import sys
+import numpy as np
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(BASE_DIR)
 ROOT_DIR = os.path.dirname(BASE_DIR)
 sys.path.append(os.path.join(ROOT_DIR, 'utils'))
-import pc_util
 
 class myDatasetConfig(object):
     def __init__(self):
@@ -47,9 +44,3 @@ class myDatasetConfig(object):
     def class2sem(self, pred_cls):
         sem = self.class2type[pred_cls]
         return sem
-
-
-
-
-
-
