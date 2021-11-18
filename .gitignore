@@ -1,2 +1,4 @@
 /mydataset/FPS1024
 /mydataset/ycb_video_obj_ply
+/.dvc/cache
+/.dvc/tmp
