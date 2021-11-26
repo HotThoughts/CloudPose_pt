@@ -1,7 +1,9 @@
 import torch
 
-
 CLASS_NAME = ["cl0", "cl1", "cl2", "cl3", "cl4"]
+
+
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 def skew_symmetric(axag_unit):
@@ -20,7 +22,7 @@ def skew_symmetric(axag_unit):
 
     row1 = torch.cat(
         [
-            torch.zeros((sh[0], 1, 1), dtype=torch.float64).cuda(),
+            torch.zeros((sh[0], 1, 1), dtype=torch.float64).to(device),
             -axag_unit_exp[:, 2, :, :],
             axag_unit_exp[:, 1, :, :],
         ],
@@ -29,7 +31,7 @@ def skew_symmetric(axag_unit):
     row2 = torch.cat(
         [
             axag_unit_exp[:, 2, :, :],
-            torch.zeros((sh[0], 1, 1), dtype=torch.float64).cuda(),
+            torch.zeros((sh[0], 1, 1), dtype=torch.float64).to(device),
             -axag_unit_exp[:, 0, :, :],
         ],
         dim=2,
@@ -39,7 +41,7 @@ def skew_symmetric(axag_unit):
         [
             -axag_unit_exp[:, 1, :, :],
             axag_unit_exp[:, 0, :, :],
-            torch.zeros((sh[0], 1, 1), dtype=torch.float64).cuda(),
+            torch.zeros((sh[0], 1, 1), dtype=torch.float64).to(device),
         ],
         dim=2,
     )
@@ -93,7 +95,7 @@ def exponential_map(axag, EPS=1e-2):
         torch.eye(3, dtype=torch.float64)
         .unsqueeze(0)
         .repeat(axag.shape[0], 1, 1)
-        .cuda()
+        .to(device)
     )
     axag_exp = (
         batch_identity
@@ -129,14 +131,14 @@ def logarithm(R, b_deal_with_sym=False, EPS=1e-2):
     """
     B = R.shape[0]
 
-    trace_all = torch.zeros(B, dtype=torch.float64).cuda()
+    trace_all = torch.zeros(B, dtype=torch.float64).to(device)
     for iii in range(B):
         trace = torch.trace(R[iii, :, :].squeeze(0))
         trace_all[iii] = trace
     trace_temp = (trace_all - 1) / 2
 
     # take the safe acos
-    o_n_e = torch.ones((B,), dtype=torch.float64).cuda()
+    o_n_e = torch.ones((B,), dtype=torch.float64).to(device)
     trace_temp = clip_by_tensor(trace_temp, -o_n_e, o_n_e)
 
     theta = torch.acos(trace_temp)
@@ -216,8 +218,10 @@ def get_loss(end_points):
 
 
 if __name__ == "__main__":
-    label = torch.tensor([[0.6977, 0.8248, 0.9367]], dtype=torch.float64).cuda()
-    pred = torch.tensor([[-2.100418, -2.167796, 0.2733]], dtype=torch.float64).cuda()
+    label = torch.tensor([[0.6977, 0.8248, 0.9367]], dtype=torch.float64).to(device)
+    pred = torch.tensor([[-2.100418, -2.167796, 0.2733]], dtype=torch.float64).to(
+        device
+    )
     # print(torch.matmul(pred, label))
     print(get_rotation_error(pred, label))
     # import cv2
