@@ -4,28 +4,27 @@
 # LICENSE file in the root directory of this source tree.
 
 
+import argparse
 import os
 import sys
-import numpy as np
 from datetime import datetime
-import argparse
-import importlib
 
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.optim import lr_scheduler
+from model_util_my import myDatasetConfig
+from my_detection_dataset import myDetectionDataset
+from tf_visualizer import Visualizer as TfVisualizer
 from torch.utils.data import DataLoader
-from tensorboardX import SummaryWriter
+
+from pt_utils import BNMomentumScheduler
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = BASE_DIR
 sys.path.append(os.path.join(ROOT_DIR, "utils"))
 sys.path.append(os.path.join(ROOT_DIR, "mydataset"))
 sys.path.append(os.path.join(ROOT_DIR, "models"))
-from pt_utils import BNMomentumScheduler
-from tf_visualizer import Visualizer as TfVisualizer
-
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -43,23 +42,26 @@ parser.add_argument(
     "--num_point",
     type=int,
     default=1024,
-    help="Point Number [256/512/1024] [default: 256]",
+    help="Point Number [256/512/1024] [default: 1024]",
 )
 parser.add_argument(
     "--num_class", type=int, default=5, help="class Number [default: 5]"
 )
 parser.add_argument(
-    "--max_epoch", type=int, default=300, help="Epoch to run [default: 90]"
+    "--max_epoch", type=int, default=90, help="Epoch to run [default: 90]"
 )
 parser.add_argument("--optimizer", default="adam", help="adam or gd [default: adam]")
 
 parser.add_argument(
-    "--batch_size", type=int, default=64, help="Batch Size during training [default: 8]"
+    "--batch_size",
+    type=int,
+    default=64,
+    help="Batch Size during training [default: 64]",
 )
 parser.add_argument(
     "--learning_rate",
     type=float,
-    default=0.0001,
+    default=0.001,
     help="Initial learning rate [default: 0.001]",
 )
 parser.add_argument(
@@ -72,7 +74,7 @@ parser.add_argument(
     "--bn_decay_step",
     type=int,
     default=40,
-    help="Period of BN decay (in epochs) [default: 20]",
+    help="Period of BN decay (in epochs) [default: 40]",
 )
 parser.add_argument(
     "--bn_decay_rate",
@@ -82,7 +84,7 @@ parser.add_argument(
 )
 parser.add_argument(
     "--lr_decay_steps",
-    default="35,55,70",
+    default="80, 120, 160",
     help="When to decay the learning rate (in epochs) [default: 80,120,160]",
 )
 parser.add_argument(
@@ -149,10 +151,7 @@ def my_worker_init_fn(worker_id):
 
 
 # Create Dataset and Dataloader
-
 sys.path.append(os.path.join(ROOT_DIR, FLAGS.dataset))
-from my_detection_dataset import myDetectionDataset
-from model_util_my import myDatasetConfig
 
 DATASET_CONFIG = myDatasetConfig()
 TRAIN_DATASET = myDetectionDataset(
@@ -184,8 +183,8 @@ print(len(TRAIN_DATALOADER), len(TEST_DATALOADER))
 # Init the model and optimzier
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-from model import CloudPose_all
 from losses import get_loss
+from model import CloudPose_all
 
 net = CloudPose_all(3, NUM_CLASS)
 

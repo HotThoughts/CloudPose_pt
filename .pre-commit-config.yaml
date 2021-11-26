@@ -66,6 +66,7 @@ repos:
     args:
       - --max-line-length=88
       - --ignore=F841,W503
+      - --exclude=train.py
 
 - repo: https://github.com/pycqa/isort
   rev: 5.10.1
