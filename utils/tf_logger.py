@@ -3,25 +3,25 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-import tensorflow as tf
+from io import BytesIO  # Python 3.x
+
 import numpy as np
 import scipy.misc
-
-try:
-    from StringIO import StringIO  # Python 2.7
-except ImportError:
-    from io import BytesIO  # Python 3.x
+import tensorflow as tf
 
 
 class Logger(object):
     def __init__(self, log_dir):
         """Create a summary writer logging to log_dir."""
-        self.writer = tf.summary.FileWriter(log_dir)
+        self.writer = tf.summary.create_file_writer(log_dir)
 
     def scalar_summary(self, tag, value, step):
         """Log a scalar variable."""
-        summary = tf.Summary(value=[tf.Summary.Value(tag=tag, simple_value=value)])
-        self.writer.add_summary(summary, step)
+        with self.writer.as_default():
+            tf.summary.scalar(tag, value, step=step)
+            self.writer.flush()
+        # summary = tf.summary(value=[tf.summary.Value(tag=tag, simple_value=value)])
+        # self.writer.add_summary(summary, step)
 
     def image_summary(self, tag, images, step):
         """Log a list of images."""
@@ -29,10 +29,7 @@ class Logger(object):
         img_summaries = []
         for i, img in enumerate(images):
             # Write the image to a string
-            try:
-                s = StringIO()
-            except:
-                s = BytesIO()
+            s = BytesIO()
             scipy.misc.toimage(img).save(s, format="png")
 
             # Create an Image object
