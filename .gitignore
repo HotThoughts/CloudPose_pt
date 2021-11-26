@@ -3,3 +3,6 @@
 /.dvc/cache
 /.dvc/tmp
 /.dvc/config.local
+
+/log
+__pycache__
