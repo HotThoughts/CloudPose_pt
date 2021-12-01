@@ -1,5 +1,8 @@
 /mydataset/FPS1024
 /mydataset/ycb_video_obj_ply
+/mydataset/my_train
+/mydataset/my_val
+/mydataset/my_test
 /.dvc/cache
 /.dvc/tmp
 /.dvc/config.local
