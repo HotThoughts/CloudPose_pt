@@ -1,0 +1,5 @@
+outs:
+- md5: f6999b7d9ab95975810452fe00e2bf08.dir
+  size: 25224000
+  nfiles: 4000
+  path: my_val

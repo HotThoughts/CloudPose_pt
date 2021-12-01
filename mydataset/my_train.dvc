@@ -1,0 +1,5 @@
+outs:
+- md5: 4ea9b8b596601d1504bd2479093b06f6.dir
+  size: 100896000
+  nfiles: 16000
+  path: my_train
