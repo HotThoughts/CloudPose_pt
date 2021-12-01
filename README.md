@@ -58,7 +58,7 @@ etc.
 ## Train a network
 
 ```python
-python train.py --batch_size 128 --log_dir log --num_point 256
+python train.py --batch_size 128 --log_dir log --num_point 1024 --num_class=18
 ```
 
 
