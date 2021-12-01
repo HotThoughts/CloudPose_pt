@@ -13,12 +13,12 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from model_util_my import myDatasetConfig
-from my_detection_dataset import myDetectionDataset
-from tf_visualizer import Visualizer as TfVisualizer
 from torch.utils.data import DataLoader
 
+from mydataset.model_util_my import myDatasetConfig
+from mydataset.my_detection_dataset import myDetectionDataset
 from pt_utils import BNMomentumScheduler
+from utils.tf_visualizer import Visualizer as TfVisualizer
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = BASE_DIR

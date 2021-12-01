@@ -26,7 +26,7 @@ class myDetectionDataset(Dataset):
         self.data_path = os.path.join(BASE_DIR, "my_%s" % (split_set))
 
         self.scan_names = sorted(
-            list(set([os.path.basename(x)[0:4] for x in os.listdir(self.data_path)]))
+            list(set([os.path.basename(x)[0:5] for x in os.listdir(self.data_path)]))
         )
 
         if scan_idx_list is not None:
