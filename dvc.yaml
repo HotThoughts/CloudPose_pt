@@ -1,0 +1,10 @@
+stages:
+  prepare:
+    cmd: python mydataset/dataset_converter.py
+
+  train:
+    cmd: python train.py --batch_size 128 --log_dir log --num_point 1024 --num_class=18
+  
+  visualize-loss:
+    cmd: python -m tensorboard.main --logdir log --port=3111 --host=127.0.0.1
+
