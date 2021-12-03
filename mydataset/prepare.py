@@ -105,26 +105,28 @@ if __name__ == "__main__":
         params = yaml.safe_load(fd)
 
     TRAIN_FILES = prepare_file_paths(params["data"]["tfrecord_dir"])
+    # Read all data and shuffle
     tr_dataset = tf.data.TFRecordDataset(TRAIN_FILES).shuffle(params["data"]["shuffle"])
-
+    # Split into train, val and test
     train_ds, train_size, val_ds, val_size, test_ds, test_size = get_dataset_partitions(
         ds=tr_dataset,
         ds_size=params["data"]["total_num_items"],
         split=params["data"]["split"],
     )
-
+    # Prepare path
     ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
     TRAIN_DIR = os.path.join(ROOT_DIR, params["data"]["train_dir"])
     VAL_DIR = os.path.join(ROOT_DIR, params["data"]["val_dir"])
     TEST_DIR = os.path.join(ROOT_DIR, params["data"]["test_dir"])
 
-    for tr_dataset, DIR, size in [
+    # Loop train, test, and val sets
+    for dataset, DIR, size in [
         (train_ds, TRAIN_DIR, train_size),
         (val_ds, VAL_DIR, val_size),
         (test_ds, TEST_DIR, test_size),
     ]:
-
-        data_converter = TFRecord2NumPy(tr_dataset)
+        # Convert tfrecord to numpy array
+        data_converter = TFRecord2NumPy(dataset)
 
         for count, element in tqdm(
             enumerate(data_converter.dataset),

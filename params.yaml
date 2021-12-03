@@ -8,7 +8,8 @@ data:
   train_dir: "my_train"
   val_dir: "my_val"
   test_dir: "my_test"
-  shuffle: 100000
+  # For perfect shuffling, a buffer size greater than or equal to the full size of the dataset is required. This will need > 18GB memory
+  shuffle: 1000000
   total_num_items: 879749
 
 train:
