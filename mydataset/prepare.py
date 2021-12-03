@@ -5,13 +5,14 @@ from typing import List
 import numpy as np
 import tensorflow as tf
 import tensorflow_graphics.geometry.transformation as tfgt
+import yaml
+from tqdm import tqdm
 
 
 class TFRecord2NumPy:
     """Convert TF record Dataset to NumPy array."""
 
-    # @tf.function(experimental_follow_type_hints=True)
-    def __init__(self, dataset: tf.data.TFRecordDataset):
+    def __init__(self, dataset):
         self.dataset = dataset.map(lambda x: self._decode(x, 1024))
 
     def _decode(self, serialized_example, total_num_point: int):
@@ -71,28 +72,70 @@ def prepare_file_paths(dir_name: str) -> List[str]:
     return FILE_PATHS
 
 
+def count_tfrecord_dataset(ds):
+    """Iterate through TFRecord dataset to count the numer of data points"""
+    ds_size = sum(1 for _ in ds)
+    return ds_size
+
+
+def get_dataset_partitions(
+    ds,
+    ds_size: int,
+    split: List[float],
+):
+    assert sum(split) == 1
+    train_split, val_split, _ = split
+
+    train_size = int(train_split * ds_size)
+    val_size = int(val_split * ds_size)
+    test_size = ds_size - train_size - val_size
+
+    train_ds = ds.take(train_size)
+    val_ds = ds.skip(train_size).take(val_size)
+    test_ds = ds.skip(train_size).skip(val_size)
+    return train_ds, train_size, val_ds, val_size, test_ds, test_size
+
+
 if __name__ == "__main__":
     # Env needs for CPU
     if len(tf.config.list_physical_devices("GPU")) == 0:
         os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
-    TRAIN_FILES = prepare_file_paths("FPS1024")
+    with open("params.yaml", "r") as fd:
+        params = yaml.safe_load(fd)
 
-    tr_dataset = tf.data.TFRecordDataset(TRAIN_FILES).shuffle(100000)
+    TRAIN_FILES = prepare_file_paths(params["data"]["tfrecord_dir"])
+    tr_dataset = tf.data.TFRecordDataset(TRAIN_FILES).shuffle(params["data"]["shuffle"])
 
-    data_converter = TFRecord2NumPy(tr_dataset)
+    train_ds, train_size, val_ds, val_size, test_ds, test_size = get_dataset_partitions(
+        ds=tr_dataset,
+        ds_size=params["data"]["total_num_items"],
+        split=params["data"]["split"],
+    )
 
     ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-    TRAIN_DIR = os.path.join(ROOT_DIR, "my_train")
+    TRAIN_DIR = os.path.join(ROOT_DIR, params["data"]["train_dir"])
+    VAL_DIR = os.path.join(ROOT_DIR, params["data"]["val_dir"])
+    TEST_DIR = os.path.join(ROOT_DIR, params["data"]["test_dir"])
 
-    for count, element in enumerate(data_converter.dataset):
-        if count > 11000:
-            break
-        pos = data_converter.convert_to_pos_npy(element)
-        seg = data_converter.convert_to_seg_npy(element)
-        data_converter.save_npy(
-            seg=seg,
-            pos=pos,
-            dir_path=TRAIN_DIR,
-            file_basename=count,
-        )
+    for tr_dataset, DIR, size in [
+        (train_ds, TRAIN_DIR, train_size),
+        (val_ds, VAL_DIR, val_size),
+        (test_ds, TEST_DIR, test_size),
+    ]:
+
+        data_converter = TFRecord2NumPy(tr_dataset)
+
+        for count, element in tqdm(
+            enumerate(data_converter.dataset),
+            total=size,
+            desc=f"Saving seg and pos npy to {DIR}",
+        ):
+            pos = data_converter.convert_to_pos_npy(element)
+            seg = data_converter.convert_to_seg_npy(element)
+            data_converter.save_npy(
+                seg=seg,
+                pos=pos,
+                dir_path=DIR,
+                file_basename=count,
+            )

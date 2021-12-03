@@ -1,0 +1,39 @@
+data:
+ # The dir name where data stores
+  dataset: mydataset
+  tfrecord_dir: "mydataset/FPS1024"
+  num_point: 1024
+  num_class: 21
+  split: [0.8, 0.1, 0.1]
+  train_dir: "my_train"
+  val_dir: "my_val"
+  test_dir: "my_test"
+  shuffle: 100000
+  total_num_items: 879749
+
+train:
+  epochs: 10
+  max_epochs: 90
+  batch_size: 16
+  # Initial learning rate
+  lr: 0.001
+  # Which epochs to decay the learning rate
+  lr_decay_steps: [80, 120, 160]
+  lr_decay_rate: [0.1, 0.1, 0.1]
+  # Optimization L2 weight decay
+  weight_decay: 0
+  # Preiod of BN decay in epochs
+  bn_decay_step: 40
+  # Decay rate for BN decay
+  bn_decay_rate: 0.5
+  # Adam or gd
+  optimizer: adam
+  # Model checkpoint path
+  checkpoint_path: ""
+  log_dir: "logs"
+  # Overwriting existing log and dump folders
+  overwrite: true
+
+process:
+  thresh: 0.98
+  bow: 15000

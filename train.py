@@ -13,12 +13,16 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import yaml
 from torch.utils.data import DataLoader
 
 from mydataset.model_util_my import myDatasetConfig
 from mydataset.my_detection_dataset import myDetectionDataset
 from pt_utils import BNMomentumScheduler
 from utils.tf_visualizer import Visualizer as TfVisualizer
+
+with open("params.yaml", "r") as fd:
+    params = yaml.safe_load(fd)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = BASE_DIR
@@ -96,33 +100,34 @@ parser.add_argument(
     "--overwrite", action="store_true", help="Overwrite existing log and dump folders."
 )
 # python -m tensorboard.main --logdir log --port=3111 --host=127.0.0.1
-FLAGS = parser.parse_args()
 # ------------------------------------------------------------------------- GLOBAL CONFIG BEG
 
-BATCH_SIZE = FLAGS.batch_size
-NUM_POINT = FLAGS.num_point
-MAX_EPOCH = FLAGS.max_epoch
-BASE_LEARNING_RATE = FLAGS.learning_rate
-BN_DECAY_STEP = FLAGS.bn_decay_step
-BN_DECAY_RATE = FLAGS.bn_decay_rate
-NUM_CLASS = FLAGS.num_class
+DATASET = params["data"]["dataset"]
+NUM_CLASS = params["data"]["num_class"]
+NUM_POINT = params["data"]["num_point"]
 
-LR_DECAY_STEPS = [int(x) for x in FLAGS.lr_decay_steps.split(",")]
-LR_DECAY_RATES = [float(x) for x in FLAGS.lr_decay_rates.split(",")]
+MAX_EPOCH = params["train"]["max_epochs"]
+BASE_LEARNING_RATE = params["train"]["lr"]
+BN_DECAY_STEP = params["train"]["bn_decay_step"]
+BN_DECAY_RATE = params["train"]["bn_decay_rate"]
+
+BATCH_SIZE = params["train"]["batch_size"]
+LR_DECAY_STEPS = params["train"]["lr_decay_steps"]
+LR_DECAY_RATES = params["train"]["lr_decay_rate"]
 
 assert len(LR_DECAY_STEPS) == len(LR_DECAY_RATES)
-LOG_DIR = FLAGS.log_dir
+LOG_DIR = params["train"]["log_dir"]
 DEFAULT_DUMP_DIR = os.path.join(BASE_DIR, os.path.basename(LOG_DIR))
 
 DEFAULT_CHECKPOINT_PATH = os.path.join(LOG_DIR, "checkpoint.tar")
 CHECKPOINT_PATH = (
-    FLAGS.checkpoint_path
-    if FLAGS.checkpoint_path is not None
+    params["train"]["checkpoint_path"]
+    if params["train"]["checkpoint_path"] is not None
     else DEFAULT_CHECKPOINT_PATH
 )
 
 # Prepare LOG_DIR and DUMP_DIR
-if os.path.exists(LOG_DIR) and FLAGS.overwrite:
+if os.path.exists(LOG_DIR) and params["train"]["overwrite"]:
     print("Log folder %s already exists. Are you sure to overwrite? (Y/N)" % (LOG_DIR))
     c = input()
     if c == "n" or c == "N":
@@ -136,7 +141,7 @@ if not os.path.exists(LOG_DIR):
     os.mkdir(LOG_DIR)
 
 LOG_FOUT = open(os.path.join(LOG_DIR, "log_train.txt"), "a")
-LOG_FOUT.write(str(FLAGS) + "\n")
+LOG_FOUT.write(str(params) + "\n")
 
 
 def log_string(out_str):
@@ -151,7 +156,7 @@ def my_worker_init_fn(worker_id):
 
 
 # Create Dataset and Dataloader
-sys.path.append(os.path.join(ROOT_DIR, FLAGS.dataset))
+sys.path.append(os.path.join(ROOT_DIR, DATASET))
 
 DATASET_CONFIG = myDatasetConfig()
 TRAIN_DATASET = myDetectionDataset(
@@ -198,7 +203,9 @@ criterion = get_loss
 
 # Load the Adam optimizer
 optimizer = optim.Adam(
-    net.parameters(), lr=BASE_LEARNING_RATE, weight_decay=FLAGS.weight_decay
+    net.parameters(),
+    lr=BASE_LEARNING_RATE,
+    weight_decay=params["train"]["weight_decay"],
 )
 
 # Load checkpoint if there is any
@@ -236,8 +243,8 @@ def adjust_learning_rate(optimizer, epoch):
 
 
 # TFBoard Visualizers
-TRAIN_VISUALIZER = TfVisualizer(FLAGS, "train")
-TEST_VISUALIZER = TfVisualizer(FLAGS, "test")
+TRAIN_VISUALIZER = TfVisualizer(log_dir=LOG_DIR, name="train")
+TEST_VISUALIZER = TfVisualizer(log_dir=LOG_DIR, name="test")
 
 
 # ------------------------------------------------------------------------- GLOBAL CONFIG END

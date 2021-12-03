@@ -1,10 +1,25 @@
 stages:
   prepare:
-    cmd: python mydataset/dataset_converter.py
+    cmd: python mydataset/prepare.py
+    params:
+      - data
+    deps:
+      - mydataset/FPS1024/
+      - mydataset/prepare.py
+    # outs:
+    #   - mydataset/my_train/
+    #   - mydataset/my_val/
+    #   - mydataset/my_test/
 
   train:
-    cmd: python train.py --batch_size 128 --log_dir log --num_point 1024 --num_class=18
-  
-  visualize-loss:
-    cmd: python -m tensorboard.main --logdir log --port=3111 --host=127.0.0.1
+    cmd: python train.py
+    deps:
+      - mydataset/my_train/
+      - mydataset/my_val/
+      - mydataset/my_test/
+    outs:
+      - logs/
 
+
+# TODO: visualize-point-cloud
+# TODO: validate

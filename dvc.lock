@@ -1,0 +1,27 @@
+schema: '2.0'
+stages:
+  prepare:
+    cmd: python mydataset/prepare.py
+    deps:
+    - path: mydataset/FPS1024/
+      md5: 2cc95c7dc840548b91d8d95b9fbb727d.dir
+      size: 32641764327
+      nfiles: 42
+    - path: mydataset/prepare.py
+      md5: 2d7be85eaf913c3b172a3e07be6f3dfa
+      size: 4033
+    params:
+      params.yaml:
+        data:
+          dataset: mydataset
+          tfrecord_dir: mydataset/FPS1024
+          num_point: 1024
+          num_class: 21
+          split:
+          - 0.8
+          - 0.1
+          - 0.1
+          train_dir: my_train
+          val_dir: my_val
+          test: my_test
+          shuffle: 100000
