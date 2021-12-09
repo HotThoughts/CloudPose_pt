@@ -19,7 +19,5 @@ stages:
       - mydataset/my_test/
     outs:
       - logs/
-
-
 # TODO: visualize-point-cloud
 # TODO: validate

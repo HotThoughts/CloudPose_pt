@@ -1,5 +1,5 @@
 data:
- # The dir name where data stores
+  # The dir name where data stores
   dataset: mydataset
   tfrecord_dir: "mydataset/FPS1024"
   num_point: 1024
