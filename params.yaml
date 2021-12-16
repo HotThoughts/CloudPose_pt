@@ -13,9 +13,9 @@ data:
   total_num_items: 879749
 
 train:
-  epochs: 10
-  max_epochs: 90
-  batch_size: 16
+  epochs: 1
+  max_epochs: 10
+  batch_size: 32
   # Initial learning rate
   lr: 0.001
   # Which epochs to decay the learning rate
@@ -31,7 +31,10 @@ train:
   optimizer: adam
   # Model checkpoint path
   checkpoint_path: ""
-  log_dir: "logs"
+  train_dir: "small_train"
+  val_dir: "small_val"
+  test_dir: "small_test"
+  log_dir: "logs/small"
   # Overwriting existing log and dump folders
   overwrite: true
 

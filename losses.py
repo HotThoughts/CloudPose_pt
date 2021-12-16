@@ -1,8 +1,5 @@
 import torch
 
-CLASS_NAME = ["cl0", "cl1", "cl2", "cl3", "cl4"]
-
-
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 

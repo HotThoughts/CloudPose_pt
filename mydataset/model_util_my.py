@@ -16,7 +16,7 @@ sys.path.append(os.path.join(ROOT_DIR, "utils"))
 
 class myDatasetConfig(object):
     def __init__(self):
-        self.num_class = 18
+        self.num_class = 21
 
         self.type2class = {f"cl{i}": i for i in range(self.num_class)}
 

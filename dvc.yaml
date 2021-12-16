@@ -6,18 +6,17 @@ stages:
     deps:
       - mydataset/FPS1024/
       - mydataset/prepare.py
-    # outs:
-    #   - mydataset/my_train/
-    #   - mydataset/my_val/
-    #   - mydataset/my_test/
 
   train:
     cmd: python train.py
+    params:
+      - data
+      - train
     deps:
-      - mydataset/my_train/
-      - mydataset/my_val/
-      - mydataset/my_test/
+      - mydataset/small_train/
+      - mydataset/small_val/
+      - mydataset/small_test/
     outs:
-      - logs/
+      - logs/small
 # TODO: visualize-point-cloud
 # TODO: validate

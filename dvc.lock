@@ -8,8 +8,8 @@ stages:
       size: 32641764327
       nfiles: 42
     - path: mydataset/prepare.py
-      md5: 2d7be85eaf913c3b172a3e07be6f3dfa
-      size: 4033
+      md5: 73a75593a9120a1aade4fc300dbbac1f
+      size: 4906
     params:
       params.yaml:
         data:
@@ -23,5 +23,65 @@ stages:
           - 0.1
           train_dir: my_train
           val_dir: my_val
-          test: my_test
-          shuffle: 100000
+          test_dir: my_test
+          shuffle: 10
+          total_num_items: 879749
+  train:
+    cmd: python train.py
+    deps:
+    - path: mydataset/small_test/
+      md5: 66128bf7c596c2f0e46d4aeb933cf663.dir
+      size: 6306000
+      nfiles: 1000
+    - path: mydataset/small_train/
+      md5: e2ec41782f5d3e9d397b99422217a7da.dir
+      size: 50448000
+      nfiles: 8000
+    - path: mydataset/small_val/
+      md5: eeb861dbcfdc166b2d4e57f19c69dc06.dir
+      size: 6306000
+      nfiles: 1000
+    params:
+      params.yaml:
+        data:
+          dataset: mydataset
+          tfrecord_dir: mydataset/FPS1024
+          num_point: 1024
+          num_class: 21
+          split:
+          - 0.8
+          - 0.1
+          - 0.1
+          train_dir: my_train
+          val_dir: my_val
+          test_dir: my_test
+          shuffle: 1000000
+          total_num_items: 879749
+        train:
+          epochs: 1
+          max_epochs: 10
+          batch_size: 32
+          lr: 0.001
+          lr_decay_steps:
+          - 80
+          - 120
+          - 160
+          lr_decay_rate:
+          - 0.1
+          - 0.1
+          - 0.1
+          weight_decay: 0
+          bn_decay_step: 40
+          bn_decay_rate: 0.5
+          optimizer: adam
+          checkpoint_path: ''
+          train_dir: small_train
+          val_dir: small_val
+          test_dir: small_test
+          log_dir: logs/small
+          overwrite: true
+    outs:
+    - path: logs/small
+      md5: 470d541160395906a37dca386df49410.dir
+      size: 19733112
+      nfiles: 5

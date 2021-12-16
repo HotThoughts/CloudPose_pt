@@ -5,5 +5,5 @@
 /.dvc/tmp
 /.dvc/config.local
 
-/log
+/logs
 __pycache__

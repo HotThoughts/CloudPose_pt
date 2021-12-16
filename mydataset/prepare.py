@@ -1,5 +1,6 @@
 import glob
 import os
+import random
 from typing import List
 
 import numpy as np
@@ -79,21 +80,24 @@ def count_tfrecord_dataset(ds):
 
 
 def get_dataset_partitions(
-    ds,
     ds_size: int,
     split: List[float],
-):
+) -> List[List]:
     assert sum(split) == 1
     train_split, val_split, _ = split
 
     train_size = int(train_split * ds_size)
     val_size = int(val_split * ds_size)
-    test_size = ds_size - train_size - val_size
 
-    train_ds = ds.take(train_size)
-    val_ds = ds.skip(train_size).take(val_size)
-    test_ds = ds.skip(train_size).skip(val_size)
-    return train_ds, train_size, val_ds, val_size, test_ds, test_size
+    shuffled_list = list(range(ds_size))
+    random.shuffle(shuffled_list)
+
+    train_list = shuffled_list[0:train_size]
+    val_list = shuffled_list[train_size : train_size + val_size]
+    test_list = shuffled_list[train_size + val_size :]
+    assert len(train_list) + len(val_list) + len(test_list) == ds_size
+
+    return train_list, val_list, test_list
 
 
 if __name__ == "__main__":
@@ -106,10 +110,12 @@ if __name__ == "__main__":
 
     TRAIN_FILES = prepare_file_paths(params["data"]["tfrecord_dir"])
     # Read all data and shuffle
-    tr_dataset = tf.data.TFRecordDataset(TRAIN_FILES).shuffle(params["data"]["shuffle"])
+    tr_dataset = tf.data.TFRecordDataset(
+        TRAIN_FILES
+    )  # .shuffle(params["data"]["shuffle"])
+    data_converter = TFRecord2NumPy(tr_dataset)
     # Split into train, val and test
-    train_ds, train_size, val_ds, val_size, test_ds, test_size = get_dataset_partitions(
-        ds=tr_dataset,
+    train_list, val_list, _ = get_dataset_partitions(
         ds_size=params["data"]["total_num_items"],
         split=params["data"]["split"],
     )
@@ -119,25 +125,23 @@ if __name__ == "__main__":
     VAL_DIR = os.path.join(ROOT_DIR, params["data"]["val_dir"])
     TEST_DIR = os.path.join(ROOT_DIR, params["data"]["test_dir"])
 
-    # Loop train, test, and val sets
-    for dataset, DIR, size in [
-        (train_ds, TRAIN_DIR, train_size),
-        (val_ds, VAL_DIR, val_size),
-        (test_ds, TEST_DIR, test_size),
-    ]:
-        # Convert tfrecord to numpy array
-        data_converter = TFRecord2NumPy(dataset)
+    for count, element in tqdm(
+        enumerate(data_converter.dataset),
+        total=params["data"]["total_num_items"],
+        desc="Saving seg and pos .npy files...",
+    ):
+        if count in train_list:
+            DIR = TRAIN_DIR
+        elif count in val_list:
+            DIR = VAL_DIR
+        else:
+            DIR = TEST_DIR
 
-        for count, element in tqdm(
-            enumerate(data_converter.dataset),
-            total=size,
-            desc=f"Saving seg and pos npy to {DIR}",
-        ):
-            pos = data_converter.convert_to_pos_npy(element)
-            seg = data_converter.convert_to_seg_npy(element)
-            data_converter.save_npy(
-                seg=seg,
-                pos=pos,
-                dir_path=DIR,
-                file_basename=count,
-            )
+        pos = data_converter.convert_to_pos_npy(element)
+        seg = data_converter.convert_to_seg_npy(element)
+        data_converter.save_npy(
+            seg=seg,
+            pos=pos,
+            dir_path=DIR,
+            file_basename=count,
+        )
