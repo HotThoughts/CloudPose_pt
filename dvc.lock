@@ -8,8 +8,8 @@ stages:
       size: 32641764327
       nfiles: 42
     - path: mydataset/prepare.py
-      md5: 73a75593a9120a1aade4fc300dbbac1f
-      size: 4906
+      md5: 761acb9cbb14714a7ede91c0e8fe4a52
+      size: 4905
     params:
       params.yaml:
         data:
@@ -24,7 +24,7 @@ stages:
           train_dir: my_train
           val_dir: my_val
           test_dir: my_test
-          shuffle: 10
+          shuffle: 1000000
           total_num_items: 879749
   train:
     cmd: python train.py
