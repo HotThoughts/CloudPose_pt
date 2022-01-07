@@ -10,6 +10,7 @@ import sys
 from datetime import datetime
 
 import numpy as np
+import tensorflow as tf
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -117,7 +118,7 @@ LR_DECAY_RATES = params["train"]["lr_decay_rate"]
 
 assert len(LR_DECAY_STEPS) == len(LR_DECAY_RATES)
 LOG_DIR = params["train"]["log_dir"]
-DEFAULT_DUMP_DIR = os.path.join(BASE_DIR, os.path.basename(LOG_DIR))
+DUMP_DIR = os.path.join(BASE_DIR, os.path.basename(LOG_DIR))
 
 DEFAULT_CHECKPOINT_PATH = os.path.join(LOG_DIR, "checkpoint.tar")
 CHECKPOINT_PATH = (
@@ -164,9 +165,10 @@ TRAIN_DATASET = myDetectionDataset(
     num_points=NUM_POINT,
 )
 TEST_DATASET = myDetectionDataset(
-    "val",
+    "test",
     num_points=NUM_POINT,
 )
+VAL_DATASET = myDetectionDataset("val", num_points=NUM_POINT)
 print(len(TRAIN_DATASET), len(TEST_DATASET))
 
 TRAIN_DATALOADER = DataLoader(
@@ -183,6 +185,14 @@ TEST_DATALOADER = DataLoader(
     num_workers=1,
     worker_init_fn=my_worker_init_fn,
 )
+VAL_DATALOADER = DataLoader(
+    VAL_DATASET,
+    batch_size=BATCH_SIZE,
+    shuffle=True,
+    num_workers=1,
+    worker_init_fn=my_worker_init_fn,
+)
+
 print(len(TRAIN_DATALOADER), len(TEST_DATALOADER))
 
 # Init the model and optimzier
@@ -191,24 +201,29 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 from losses import get_loss
 from model import CloudPose_all
 
-net = CloudPose_all(3, NUM_CLASS)
 
-if torch.cuda.device_count() > 1:
-    log_string("Let's use %d GPUs!" % (torch.cuda.device_count()))
-    # dim = 0 [30, xxx] -> [10, ...], [10, ...], [10, ...] on 3 GPUs
-    net = nn.DataParallel(net)
-net.to(device)
+def init_model():
+    net = CloudPose_all(3, NUM_CLASS)
 
+    if torch.cuda.device_count() > 1:
+        log_string("Let's use %d GPUs!" % (torch.cuda.device_count()))
+        # dim = 0 [30, xxx] -> [10, ...], [10, ...], [10, ...] on 3 GPUs
+        net = nn.DataParallel(net)
+    net.to(device)
+
+    return net
+
+
+net = init_model()
 criterion = get_loss
 
-# Load the Adam optimizer
-optimizer = optim.Adam(
+# load the adam optimizer
+optimizer = optim.adam(
     net.parameters(),
-    lr=BASE_LEARNING_RATE,
+    lr=base_learning_rate,
     weight_decay=params["train"]["weight_decay"],
 )
-
-# Load checkpoint if there is any
+# load checkpoint if there is any
 it = -1  # for the initialize value of `LambdaLR` and `BNMomentumScheduler`
 start_epoch = 0
 if CHECKPOINT_PATH is not None and os.path.isfile(CHECKPOINT_PATH):
@@ -245,13 +260,16 @@ def adjust_learning_rate(optimizer, epoch):
 # TFBoard Visualizers
 TRAIN_VISUALIZER = TfVisualizer(log_dir=LOG_DIR, name="train")
 TEST_VISUALIZER = TfVisualizer(log_dir=LOG_DIR, name="test")
+VAL_VISUALIZER = TfVisualizer(log_dir=LOG_DIR, name="val")
 
 
 # ------------------------------------------------------------------------- GLOBAL CONFIG END
 def evaluate_one_epoch():
     stat_dict = {}  # collect statistics
+    points_dict = {}  # collect point clouds
 
     net.eval()  # set model to eval mode (for bn and dp)
+
     for batch_idx, batch_data_label in enumerate(TEST_DATALOADER):
         if batch_idx % 10 == 0:
             print("Eval batch: %d" % (batch_idx))
@@ -259,10 +277,13 @@ def evaluate_one_epoch():
             batch_data_label[key] = batch_data_label[key].to(device)
 
         # Forward pass
+        # point_clouds: an tensor with size torch.Size([32, 1024, 24])
         inputs = {"point_clouds": batch_data_label["point_clouds"]}
         with torch.no_grad():
             end_points = net(inputs)
-
+        if batch_idx == 0:
+            point_cloud = inputs["point_clouds"]
+            points_dict = {"test-point-cloud": point_cloud}
         # Compute loss
         for key in batch_data_label:
             assert key not in end_points
@@ -275,11 +296,15 @@ def evaluate_one_epoch():
                 if key not in stat_dict:
                     stat_dict[key] = 0
                 stat_dict[key] += end_points[key].item()
-            # Log statistics
+    step = (EPOCH_CNT + 1) * len(TRAIN_DATALOADER) * BATCH_SIZE
+    # Log statistics
     TEST_VISUALIZER.log_scalars(
-        {key: stat_dict[key] / float(batch_idx + 1) for key in stat_dict},
-        (EPOCH_CNT + 1) * len(TRAIN_DATALOADER) * BATCH_SIZE,
+        scalars={key: stat_dict[key] / float(batch_idx + 1) for key in stat_dict},
+        step=step,
     )
+    # Log point clouds
+    TEST_VISUALIZER.log_pointclouds(pointclouds=points_dict, step=step)
+
     for key in sorted(stat_dict.keys()):
         log_string("eval mean %s: %f" % (key, stat_dict[key] / (float(batch_idx + 1))))
 
@@ -296,6 +321,7 @@ def train_one_epoch(epoch):
     bnm_scheduler.step()  # decay BN momentum
     net.train()  # set model to training mode
     for batch_idx, batch_data_label in enumerate(TRAIN_DATALOADER):
+        # batch_data_label: a dict of point_clouds, axag_label, translate_label
         for key in batch_data_label:
             batch_data_label[key] = batch_data_label[key].to(device)
         # Forward pass
@@ -366,5 +392,68 @@ def train(start_epoch):
                 torch.save(save_dict, os.path.join(LOG_DIR, "checkpoint.tar"))
 
 
+def load_checkpoint(net):
+    checkpoint = torch.load(CHECKPOINT_PATH)
+    net.load_state_dict(checkpoint["model_state_dict"])
+    optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+    start_epoch = checkpoint["epoch"]
+    log_string("-> loaded checkpoint %s (epoch: %d)" % (CHECKPOINT_PATH, start_epoch))
+
+
+def evaluate(log_pointclouds=True):
+    stat_dict = {}  # collect statistics
+    points_dict = {}  # collect point clouds
+
+    net.init_model()
+    load_checkpoint(net)
+    net.eval()  # set model to eval mode (for bn and dp)
+
+    for batch_idx, batch_data_label in enumerate(VAL_DATALOADER):
+        if batch_idx % 10 == 0:
+            print("Eval batch: %d" % (batch_idx))
+        for key in batch_data_label:
+            batch_data_label[key] = batch_data_label[key].to(device)
+
+        # Forward pass
+        # point_clouds: an tensor with size torch.Size([32, 1024, 24])
+        inputs = {"point_clouds": batch_data_label["point_clouds"]}
+        with torch.no_grad():
+            end_points = net(inputs)
+        if batch_idx == 0:
+            point_cloud = inputs["point_clouds"]
+            points_dict = {"test-point-cloud": point_cloud}
+        # Compute loss
+        for key in batch_data_label:
+            assert key not in end_points
+            end_points[key] = batch_data_label[key]
+        loss, end_points = criterion(end_points)
+
+        # Accumulate statistics and print out
+        for key in end_points:
+            if "loss" in key or "acc" in key or "ratio" in key:
+                if key not in stat_dict:
+                    stat_dict[key] = 0
+                stat_dict[key] += end_points[key].item()
+    step = (EPOCH_CNT + 1) * len(TRAIN_DATALOADER) * BATCH_SIZE
+    # Log statistics
+    VAL_VISUALIZER.log_scalars(
+        scalars={key: stat_dict[key] / float(batch_idx + 1) for key in stat_dict},
+        step=step,
+    )
+    # Log point clouds
+    VAL_VISUALIZER.log_pointclouds(pointclouds=points_dict, step=step)
+
+    for key in sorted(stat_dict.keys()):
+        log_string("eval mean %s: %f" % (key, stat_dict[key] / (float(batch_idx + 1))))
+
+    # Evaluate average precision
+    # for key in metrics_dict:
+    #     log_string('eval %s: %f' % (key, metrics_dict[key]))
+    mean_loss = stat_dict["total_loss"] / float(batch_idx + 1)
+    return mean_loss
+
+
 if __name__ == "__main__":
-    train(start_epoch)
+    # train(start_epoch)
+    loss = evaluate()
+    print(loss)

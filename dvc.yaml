@@ -18,5 +18,8 @@ stages:
       - mydataset/small_test/
     outs:
       - logs/small
-# TODO: visualize-point-cloud
+  visualize:
+    cmd: python -m tensorboard.main --logdir logs --port=3111 --host=127.0.0.1
+    deps:
+      - logs/
 # TODO: validate

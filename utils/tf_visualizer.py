@@ -36,6 +36,12 @@ class Visualizer:
         for label, val in scalars.items():
             self.logger.scalar_summary(label, val, step)
 
+    def log_pointclouds(self, pointclouds, step):
+        for label, val in pointclouds.items():
+            self.logger.point_cloud_summary(
+                display_name=label, point_clouds=val, step=step
+            )
+
     # scatter plots
     def plot_current_points(self, points, disp_offset=10):
         pass

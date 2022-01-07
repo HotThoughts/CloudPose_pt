@@ -8,6 +8,7 @@ from io import BytesIO  # Python 3.x
 import numpy as np
 import scipy.misc
 import tensorflow as tf
+from tensorboard.plugins.mesh import summary_v2 as mesh_summary
 
 
 class Logger(object):
@@ -46,6 +47,12 @@ class Logger(object):
         # Create and write Summary
         summary = tf.Summary(value=img_summaries)
         self.writer.add_summary(summary, step)
+
+    def point_cloud_summary(self, display_name, point_clouds, step):
+        """Log one point clouds"""
+        with self.writer.as_default():
+            mesh_summary.mesh("point_cloud", vertices=point_clouds, step=step)
+            self.writer.flush()
 
     def histo_summary(self, tag, values, step, bins=1000):
         """Log a histogram of the tensor of values."""
