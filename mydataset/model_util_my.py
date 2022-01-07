@@ -18,7 +18,31 @@ class myDatasetConfig(object):
     def __init__(self):
         self.num_class = 21
 
-        self.type2class = {f"cl{i}": i for i in range(self.num_class)}
+        # Class name and id map
+        # see: https://github.com/GeeeG/CloudPose/blob/d6410dc4af9a58c00511e34fdc41c6cfd9f96cba/ycb_video_data_tfRecords/script/2_dataset_to_tfRecord_small.py
+        self.type2class = {
+            "master chef can": 0,
+            "cracker box": 1,
+            "suger box": 2,
+            "tomato soup can": 3,
+            "mustard bottle": 4,
+            "tuna fish can": 5,
+            "pudding box": 6,
+            "gelatin box": 7,
+            "potted meat can": 8,
+            "banana": 9,
+            "pitcher base": 10,
+            "bleach cleanser": 11,
+            "bowl": 12,
+            "mug": 13,
+            "drill": 14,
+            "wood block": 15,
+            "scissors": 16,
+            "large marker": 17,
+            "large clapm": 18,
+            "extra large clamp": 19,
+            "foam brick": 20,
+        }
 
         self.class2type = {self.type2class[t]: t for t in self.type2class}
 
