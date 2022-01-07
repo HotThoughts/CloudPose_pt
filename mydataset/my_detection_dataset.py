@@ -23,7 +23,7 @@ class myDetectionDataset(Dataset):
     ):
         assert num_points <= 4096
 
-        self.data_path = os.path.join(BASE_DIR, "my_%s" % (split_set))
+        self.data_path = os.path.join(BASE_DIR, "small_%s" % (split_set))
 
         self.scan_names = sorted(
             list(set([os.path.basename(x)[0:5] for x in os.listdir(self.data_path)]))
