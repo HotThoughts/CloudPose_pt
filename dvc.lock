@@ -59,7 +59,7 @@ stages:
           total_num_items: 879749
         train:
           epochs: 1
-          max_epochs: 10
+          max_epochs: 2
           batch_size: 32
           lr: 0.001
           lr_decay_steps:
@@ -74,14 +74,14 @@ stages:
           bn_decay_step: 40
           bn_decay_rate: 0.5
           optimizer: adam
-          checkpoint_path: ''
+          checkpoint_path: logs/small/checkpoint.tar
           train_dir: small_train
           val_dir: small_val
           test_dir: small_test
           log_dir: logs/small
-          overwrite: true
+          overwrite: false
     outs:
     - path: logs/small
-      md5: 470d541160395906a37dca386df49410.dir
-      size: 19733112
-      nfiles: 5
+      md5: 9f5023ea8bde4e087c478ba5e9783a3f.dir
+      size: 22945507
+      nfiles: 66
