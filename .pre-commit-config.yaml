@@ -37,11 +37,20 @@ repos:
                 }
               }
           }
+<<<<<<< HEAD
 # - repo: https://github.com/zricethezav/gitleaks
 #   rev: v7.6.1
 #   hooks:
 #   - id: gitleaks
 #     name: 🔍 Check git leaks
+=======
+
+- repo: https://github.com/zricethezav/gitleaks
+  rev: v7.6.1
+  hooks:
+  - id: gitleaks
+    name: 🔍 Check git leaks
+>>>>>>> main
 
 - repo: https://github.com/jumanjihouse/pre-commit-hooks
   rev: 2.1.5
@@ -64,7 +73,12 @@ repos:
     name: 🐍 Check Python code
     args:
       - --max-line-length=88
+<<<<<<< HEAD
       - --ignore=F841
+=======
+      - --ignore=F841,W503
+      - --exclude=train.py
+>>>>>>> main
 
 - repo: https://github.com/pycqa/isort
   rev: 5.10.1
@@ -72,19 +86,32 @@ repos:
   - id: isort
     name: 🐍 Sort Python imports
 
+<<<<<<< HEAD
 - repo: https://github.com/asottile/pyupgrade
   rev: v2.29.1
   hooks:
   - id: pyupgrade
     name: 🐍 Upgrade Python code
     args: [--py36-plus]
+=======
+# - repo: https://github.com/asottile/pyupgrade
+#   rev: v2.29.1
+#   hooks:
+#   - id: pyupgrade
+#     name: 🐍 Upgrade Python code
+#     args: [--py36-plus]
+>>>>>>> main
 
 # Black and flake8 for notebook
 - repo: https://github.com/nbQA-dev/nbQA
   rev: 1.1.1
   hooks:
     - id: nbqa-black
+<<<<<<< HEAD
     # - id: nbqa-flake8
+=======
+    - id: nbqa-flake8
+>>>>>>> main
     - id: nbqa-isort
 
 # Lint Dockerfile

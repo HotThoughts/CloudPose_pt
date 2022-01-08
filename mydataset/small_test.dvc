@@ -1,0 +1,5 @@
+outs:
+- md5: 66128bf7c596c2f0e46d4aeb933cf663.dir
+  size: 6306000
+  nfiles: 1000
+  path: small_test

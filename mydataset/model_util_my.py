@@ -5,39 +5,48 @@
 
 import os
 import sys
+<<<<<<< HEAD
+=======
+
+>>>>>>> main
 import numpy as np
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(BASE_DIR)
 ROOT_DIR = os.path.dirname(BASE_DIR)
+<<<<<<< HEAD
 sys.path.append(os.path.join(ROOT_DIR, 'utils'))
+=======
+sys.path.append(os.path.join(ROOT_DIR, "utils"))
+
+>>>>>>> main
 
 class myDatasetConfig(object):
     def __init__(self):
-        self.num_class = 5
+        self.num_class = 21
 
-        self.type2class = {'cl0':0, 'cl1':1, 'cl2':2, 'cl3':3, 'cl4':4}
+        self.type2class = {f"cl{i}": i for i in range(self.num_class)}
 
         self.class2type = {self.type2class[t]: t for t in self.type2class}
 
-        self.type2onehotclass = {'cl0': np.array([1, 0, 0, 0, 0]),
-                                 'cl1': np.array([0, 1, 0, 0, 0]),
-                                 'cl2': np.array([0, 0, 1, 0, 0]),
-                                 'cl3': np.array([0, 0, 0, 1, 0]),
-                                 'cl4': np.array([0, 0, 0, 0, 1])}
+        # 2D array
+        self.onehot_encoding = np.eye(self.num_class)[
+            np.array([range(self.num_class)]).reshape(-1)
+        ]
 
     def sem2class(self, cls):
-        onehot = self.type2onehotclass[self.class2type[cls]]
+        # Select ith row of the 2D array
+        onehot = self.onehot_encoding[int(cls), :]
         return onehot
 
     def size2class(self, type_name):
-        ''' Convert 3D box size (l,w,h) to size class and size residual '''
+        """Convert 3D box size (l,w,h) to size class and size residual"""
         size_class = self.type2class[type_name]  # 0
         # size_residual = size - self.type_mean_size[type_name]  # 尺寸
         return size_class
 
     def class2size(self, pred_cls):
-        ''' Inverse function to size2class '''
+        """Inverse function to size2class"""
         mean_size = self.type_mean_size[self.class2type[pred_cls]]
         return mean_size
 

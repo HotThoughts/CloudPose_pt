@@ -1,92 +1,149 @@
 import torch.nn as nn
 import torch.utils.data
-import torch.nn.functional as F
+
+from pointnet_util import PointNetFeaturePropagation, PointNetSetAbstraction
+from transformer import TransformerBlock
+
+
+class TransitionDown(nn.Module):
+    def __init__(self, k, nneighbor, channels):
+        super().__init__()
+        self.sa = PointNetSetAbstraction(
+            k, 0, nneighbor, channels[0], channels[1:], group_all=False, knn=True
+        )
+
+    def forward(self, xyz, points):
+        return self.sa(xyz, points)
+
+
+class TransitionUp(nn.Module):
+    def __init__(self, dim1, dim2, dim_out):
+        class SwapAxes(nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x):
+                return x.transpose(1, 2)
+
+        super().__init__()
+        self.fc1 = nn.Sequential(
+            nn.Linear(dim1, dim_out),
+            SwapAxes(),
+            nn.BatchNorm1d(dim_out),
+            SwapAxes(),
+            nn.ReLU(),
+        )
+        self.fc2 = nn.Sequential(
+            nn.Linear(dim2, dim_out),
+            SwapAxes(),
+            nn.BatchNorm1d(dim_out),
+            SwapAxes(),
+            nn.ReLU(),
+        )
+        self.fp = PointNetFeaturePropagation(-1, [])
+
+    def forward(self, xyz1, points1, xyz2, points2):
+        feats1 = self.fc1(points1)
+        feats2 = self.fc2(points2)
+        feats1 = self.fp(
+            xyz2.transpose(1, 2), xyz1.transpose(1, 2), None, feats1.transpose(1, 2)
+        ).transpose(1, 2)
+        return feats1 + feats2
+
+
+class Backbone(nn.Module):
+    def __init__(
+        self, num_class=21, npoints=1024, nblocks=4, nneighbor=16, d_points=768
+    ):
+        super().__init__()
+        transformer_dim = 512
+        self.fc1 = nn.Sequential(
+            nn.Linear(d_points, 1024), nn.ReLU(), nn.Linear(64, 64)
+        )
+        self.transformer1 = TransformerBlock(64, transformer_dim, nneighbor)
+        self.transition_downs = nn.ModuleList()
+        self.transformers = nn.ModuleList()
+        for i in range(nblocks):
+            channel = 64 * 2 ** (i + 1)
+            self.transition_downs.append(
+                TransitionDown(
+                    npoints // 4 ** (i + 1),
+                    nneighbor,
+                    [channel // 2 + 3, channel, channel],
+                )
+            )
+            self.transformers.append(
+                TransformerBlock(channel, transformer_dim, nneighbor)
+            )
+        self.nblocks = nblocks
+
+    def forward(self, x):
+        xyz = x[..., :3]
+        points = self.transformer1(xyz, self.fc1(x))[0]
+
+        xyz_and_feats = [(xyz, points)]
+        for i in range(self.nblocks):
+            xyz, points = self.transition_downs[i](xyz, points)
+            points = self.transformers[i](xyz, points)[0]
+            xyz_and_feats.append((xyz, points))
+        return points, xyz_and_feats
 
 
 class CloudPose_trans(nn.Module):
-    def __init__(self, channel=3, num_class=5):
+    def __init__(
+        self,
+        channel=3,
+        num_class=21,
+        npoints=1024,
+        nblocks=4,
+        nneighbor=16,
+        d_points=3,
+    ):
         super(CloudPose_trans, self).__init__()
-        self.in_feature_dim = channel + num_class
+        self.backbone = Backbone()
+        self.fc2 = nn.Sequential(
+            nn.Linear(32 * 2 ** nblocks, 256),
+            nn.ReLU(),
+            nn.Linear(256, 64),
+            nn.ReLU(),
+            nn.Linear(64, num_class),
+        )
+        self.nblocks = nblocks
 
-        self.conv1 = torch.nn.Conv1d(self.in_feature_dim, 64, 1)
-        self.conv2 = torch.nn.Conv1d(64, 64, 1)
-        self.conv3 = torch.nn.Conv1d(64, 64, 1)
-        self.conv4 = torch.nn.Conv1d(64, 128, 1)
-        self.conv5 = torch.nn.Conv1d(128, 1024, 1)
-
-        self.bn1 = nn.BatchNorm1d(64)
-        self.bn2 = nn.BatchNorm1d(64)
-        self.bn3 = nn.BatchNorm1d(64)
-        self.bn4 = nn.BatchNorm1d(128)
-        self.bn5 = nn.BatchNorm1d(1024)
-
-        self.fc1 = nn.Linear(1024, 512)
-        self.fc2 = nn.Linear(512, 256)
-        self.fc3 = nn.Linear(256, 3)
-        self.bn6 = nn.BatchNorm1d(512)
-        self.bn7 = nn.BatchNorm1d(256)
-
-    def forward(self, point_cloud):
-        batch_size = point_cloud.shape[0]
-        # num_point = point_cloud.shape[2]
-
-        x = F.relu(self.bn1(self.conv1(point_cloud)))
-        x = F.relu(self.bn2(self.conv2(x)))
-        x = F.relu(self.bn3(self.conv3(x)))
-        x = F.relu(self.bn4(self.conv4(x)))
-        x = F.relu(self.bn5(self.conv5(x)))
-
+    def forward(self, x):
+        batch_size = x.shape[0]
+        points, _ = self.backbone(x)
+        x = self.fc2(points)
         max_indices = torch.argmax(x, dim=1)
-
-        x = torch.max(x, 2, keepdim=True)[0]
-        x = x.view(batch_size, 1024)
-        x = F.relu(self.bn6(self.fc1(x)))
-        x = F.relu(self.bn7(self.fc2(x)))
-        x = self.fc3(x)
-
         return x, max_indices
 
 
 class CloudPose_rot(nn.Module):
-    def __init__(self, channel=3, num_class=5):
+    def __init__(
+        self,
+        channel=3,
+        num_class=21,
+        npoints=1024,
+        nblocks=4,
+        nneighbor=16,
+        d_points=1024,
+    ):
         super(CloudPose_rot, self).__init__()
-        self.in_feature_dim = channel + num_class
+        self.backbone = Backbone()
+        self.fc2 = nn.Sequential(
+            nn.Linear(32 * 2 ** nblocks, 256),
+            nn.ReLU(),
+            nn.Linear(256, 64),
+            nn.ReLU(),
+            nn.Linear(64, num_class),
+        )
+        self.nblocks = nblocks
 
-        self.conv1 = torch.nn.Conv1d(self.in_feature_dim, 64, 1)
-        self.conv2 = torch.nn.Conv1d(64, 64, 1)
-        self.conv3 = torch.nn.Conv1d(64, 64, 1)
-        self.conv4 = torch.nn.Conv1d(64, 128, 1)
-        self.conv5 = torch.nn.Conv1d(128, 1024, 1)
-
-        self.bn1 = nn.BatchNorm1d(64)
-        self.bn2 = nn.BatchNorm1d(64)
-        self.bn3 = nn.BatchNorm1d(64)
-        self.bn4 = nn.BatchNorm1d(128)
-        self.bn5 = nn.BatchNorm1d(1024)
-
-        self.fc1 = nn.Linear(1024, 512)
-        self.fc2 = nn.Linear(512, 256)
-        self.fc3 = nn.Linear(256, 3)
-        self.bn6 = nn.BatchNorm1d(512)
-        self.bn7 = nn.BatchNorm1d(256)
-
-    def forward(self, point_cloud):
-        batch_size = point_cloud.shape[0]
-        # num_point = point_cloud.shape[2]
-
-        x = F.relu(self.bn1(self.conv1(point_cloud)))
-        x = F.relu(self.bn2(self.conv2(x)))
-        x = F.relu(self.bn3(self.conv3(x)))
-        x = F.relu(self.bn4(self.conv4(x)))
-        x = F.relu(self.bn5(self.conv5(x)))
-
+    def forward(self, x):
+        batch_size = x.shape[0]
+        points, _ = self.backbone(x)
+        x = self.fc2(points)
         max_indices = torch.argmax(x, dim=1)
-
-        x = torch.max(x, 2, keepdim=True)[0]
-        x = x.view(batch_size, 1024)
-        x = F.relu(self.bn6(self.fc1(x)))
-        x = F.relu(self.bn7(self.fc2(x)))
-        x = self.fc3(x)
         return x, max_indices
 
 

@@ -1,0 +1,22 @@
+stages:
+  prepare:
+    cmd: python mydataset/prepare.py
+    params:
+      - data
+    deps:
+      - mydataset/FPS1024/
+      - mydataset/prepare.py
+
+  train:
+    cmd: python train.py
+    params:
+      - data
+      - train
+    deps:
+      - mydataset/small_train/
+      - mydataset/small_val/
+      - mydataset/small_test/
+    outs:
+      - logs/small
+# TODO: visualize-point-cloud
+# TODO: validate

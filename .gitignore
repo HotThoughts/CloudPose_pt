@@ -1,6 +1,18 @@
+<<<<<<< HEAD
 /mydataset/FPS1024
 /mydataset/ycb_video_obj_ply
 /.dvc/cache
 /.dvc/tmp
 /.dvc/config.local
 .dccache
+=======
+/mydataset/**
+!mydataset/*.py
+!mydataset/*.dvc
+/.dvc/cache
+/.dvc/tmp
+/.dvc/config.local
+
+/logs
+__pycache__
+>>>>>>> main
