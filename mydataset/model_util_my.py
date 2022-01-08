@@ -5,21 +5,13 @@
 
 import os
 import sys
-<<<<<<< HEAD
-=======
-
->>>>>>> main
 import numpy as np
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(BASE_DIR)
 ROOT_DIR = os.path.dirname(BASE_DIR)
-<<<<<<< HEAD
-sys.path.append(os.path.join(ROOT_DIR, 'utils'))
-=======
 sys.path.append(os.path.join(ROOT_DIR, "utils"))
 
->>>>>>> main
 
 class myDatasetConfig(object):
     def __init__(self):
