@@ -30,13 +30,13 @@ train:
   # Adam or gd
   optimizer: adam
   # Model checkpoint path
-  checkpoint_path: ""
+  checkpoint_path: "logs/small/checkpoint.tar"
   train_dir: "small_train"
   val_dir: "small_val"
   test_dir: "small_test"
   log_dir: "logs/small"
   # Overwriting existing log and dump folders
-  overwrite: true
+  overwrite: false
 
 process:
   thresh: 0.98
