@@ -19,7 +19,12 @@ MEAN_COLOR_RGB = np.array([0.5, 0.5, 0.5])  # sunrgbd color is in 0~1
 
 class myDetectionDataset(Dataset):
     def __init__(
-        self, split_set="train", num_points=1024, use_color=False, scan_idx_list=None
+        self,
+        split_set="train",
+        num_points=1024,
+        use_color=False,
+        scan_idx_list=None,
+        keep_class_name=False,
     ):
         assert num_points <= 4096
 
@@ -33,6 +38,7 @@ class myDetectionDataset(Dataset):
             self.scan_names = [self.scan_names[i] for i in scan_idx_list]
         self.num_points = num_points
         self.use_color = use_color
+        self.keep_class_name = keep_class_name
 
     def __len__(self):
         return len(self.scan_names)
@@ -54,7 +60,10 @@ class myDetectionDataset(Dataset):
         # ------------------------------- LABELS ------------------------------
         ret_dict = {}
         point_cloud = pc_util.random_sampling(point_cloud, self.num_points)
-        one_hot = DC.sem2class(bbox[16])
+        class_id = bbox[16]
+        if self.keep_class_name:
+            ret_dict["class_name"] = DC.class2type[class_id]
+        one_hot = DC.sem2class(class_id)
         one_hot_ex_rep = np.repeat(
             np.expand_dims(one_hot, axis=0), self.num_points, axis=0
         )

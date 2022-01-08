@@ -48,10 +48,10 @@ class Logger(object):
         summary = tf.Summary(value=img_summaries)
         self.writer.add_summary(summary, step)
 
-    def point_cloud_summary(self, display_name, point_clouds, step):
-        """Log one point clouds"""
+    def point_cloud_summary(self, display_name, point_cloud, step):
+        """Log one point cloud"""
         with self.writer.as_default():
-            mesh_summary.mesh("point_cloud", vertices=point_clouds, step=step)
+            mesh_summary.mesh(display_name, vertices=point_cloud, step=step)
             self.writer.flush()
 
     def histo_summary(self, tag, values, step, bins=1000):

@@ -168,7 +168,7 @@ TEST_DATASET = myDetectionDataset(
     "test",
     num_points=NUM_POINT,
 )
-VAL_DATASET = myDetectionDataset("val", num_points=NUM_POINT)
+VAL_DATASET = myDetectionDataset("val", num_points=NUM_POINT, keep_class_name=True)
 print(len(TRAIN_DATASET), len(TEST_DATASET))
 
 TRAIN_DATALOADER = DataLoader(
@@ -218,9 +218,9 @@ net = init_model()
 criterion = get_loss
 
 # load the adam optimizer
-optimizer = optim.adam(
+optimizer = optim.Adam(
     net.parameters(),
-    lr=base_learning_rate,
+    lr=BASE_LEARNING_RATE,
     weight_decay=params["train"]["weight_decay"],
 )
 # load checkpoint if there is any
@@ -392,36 +392,37 @@ def train(start_epoch):
                 torch.save(save_dict, os.path.join(LOG_DIR, "checkpoint.tar"))
 
 
-def load_checkpoint(net):
+def load_checkpoint():
     checkpoint = torch.load(CHECKPOINT_PATH)
     net.load_state_dict(checkpoint["model_state_dict"])
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-    start_epoch = checkpoint["epoch"]
-    log_string("-> loaded checkpoint %s (epoch: %d)" % (CHECKPOINT_PATH, start_epoch))
 
 
 def evaluate(log_pointclouds=True):
     stat_dict = {}  # collect statistics
     points_dict = {}  # collect point clouds
-
-    net.init_model()
-    load_checkpoint(net)
+    load_checkpoint()
     net.eval()  # set model to eval mode (for bn and dp)
 
     for batch_idx, batch_data_label in enumerate(VAL_DATALOADER):
         if batch_idx % 10 == 0:
             print("Eval batch: %d" % (batch_idx))
         for key in batch_data_label:
-            batch_data_label[key] = batch_data_label[key].to(device)
+            if key != "class_name":
+                batch_data_label[key] = batch_data_label[key].to(device)
 
         # Forward pass
         # point_clouds: an tensor with size torch.Size([32, 1024, 24])
         inputs = {"point_clouds": batch_data_label["point_clouds"]}
         with torch.no_grad():
             end_points = net(inputs)
-        if batch_idx == 0:
-            point_cloud = inputs["point_clouds"]
-            points_dict = {"test-point-cloud": point_cloud}
+
+        if batch_idx % 50 == 0:
+            # Get the first item in the batch
+            point_cloud = batch_data_label["point_clouds"][:1]
+            # Get the class name of the first item
+            class_name = batch_data_label["class_name"][0]
+            points_dict = {class_name: point_cloud}
         # Compute loss
         for key in batch_data_label:
             assert key not in end_points
@@ -434,14 +435,14 @@ def evaluate(log_pointclouds=True):
                 if key not in stat_dict:
                     stat_dict[key] = 0
                 stat_dict[key] += end_points[key].item()
-    step = (EPOCH_CNT + 1) * len(TRAIN_DATALOADER) * BATCH_SIZE
+    step = len(TRAIN_DATALOADER) * BATCH_SIZE
     # Log statistics
     VAL_VISUALIZER.log_scalars(
         scalars={key: stat_dict[key] / float(batch_idx + 1) for key in stat_dict},
         step=step,
     )
     # Log point clouds
-    VAL_VISUALIZER.log_pointclouds(pointclouds=points_dict, step=step)
+    VAL_VISUALIZER.log_pointcloud(pointcloud=points_dict, step=step)
 
     for key in sorted(stat_dict.keys()):
         log_string("eval mean %s: %f" % (key, stat_dict[key] / (float(batch_idx + 1))))

@@ -36,10 +36,10 @@ class Visualizer:
         for label, val in scalars.items():
             self.logger.scalar_summary(label, val, step)
 
-    def log_pointclouds(self, pointclouds, step):
-        for label, val in pointclouds.items():
+    def log_pointcloud(self, pointcloud, step):
+        for name, point_cloud in pointcloud.items():
             self.logger.point_cloud_summary(
-                display_name=label, point_clouds=val, step=step
+                display_name=name, point_cloud=point_cloud, step=step
             )
 
     # scatter plots
